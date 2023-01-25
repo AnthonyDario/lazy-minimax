@@ -105,28 +105,57 @@ class MapTree(Tree):
         self.trans = f
 
     def node(self): return self.trans(self.tree.node())
-    def desc(self): return [MapTree(self.trans(tree), self.trans) for tree in self.tree.desc]
-
-gametree = RepTree(moves, Position())
+    def desc(self): return [MapTree(t, self.trans) 
+                            for t in self.tree.desc()]
 
 class Prune(Tree):
     def __init__(self, tree, depth):
         self.tree = tree
         self.depth = depth
 
-#print(f"tic:\n{tic}\n")
-print(f"tac:\n{gametree}\n")
+    def node(self): return self.tree.node()
+    def desc(self): 
+        if self.depth == 0: return []
+        return [Prune(t, self.depth - 1) for t in self.tree.desc()]
+
+# Method for traversing the tree
 def descend(tree):
     for d in tree.desc():
-        if d.node() is None:
-            return
-        elif static(d.node()) != 0:
-            print(d.node())
-            print(static(d.node()))
-            print()
-        else:
-            print(f"descending on:\n{d.node()}")
-            descend(d)
+        if d.node() is None: return
+        print(d)
 
-descend(gametree)
+# Decomposed maximium and minimum functions
+def maximize(tree):
+    return max(maxi)
 
+def maxi(tree):
+    if len(tree.desc()) == 0: return [tree.node()]
+    return [min(ms) for ms in [mini(t) for t in tree.desc()]]
+
+def minimize(tree):
+    return min(mini)
+
+def mini(tree):
+    if len(tree.desc()) == 0: return [tree.node()]
+    return [max(ms) for ms in [maxi(t) for t in tree.desc()]]
+
+def mapmin(xs):
+    return [min(xs[0])].append(omit(min(xs[0]), xs[1:]))
+
+def omit(pot, xs):
+    if len(xs) == 0: return []
+    elif minleq(xs[0], pot): return omit(pot, xs[1:])
+    else: return [min(xs[0])].append(omit(min(xs[0]), xs[1:]))
+
+def minleq(ns, pot):
+    if len(ns) == 0: return false
+    elif ns[0] <= pot: return true
+    else: return minleq(ns[1:], pot)
+
+
+gametree = RepTree(moves, Position())
+print(f"tac:\n{gametree}\n")
+#descend(MapTree(Prune(gametree, 5), static))
+evaluation = max(maxi(MapTree(Prune(gametree, 8), static)))
+
+print(f"evaluation: {evaluation}")
