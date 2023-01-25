@@ -109,8 +109,6 @@ class Repeat(Stream):
 #     nats = 1, 2, 3, 4, ...
 zeroes = Repeat(0)
 nats = Repeat(0, lambda x: x + 1)
-print(zeroes[10])
-print(nats[10])
 
 # Transform a `stream` by applying a given `trans` function to each element.
 #
@@ -121,15 +119,8 @@ class Map(Stream):
         self.trans = f
 
     def head(self): return self.trans(self.stream[0])
-    def tail(self): return Map(self.stream.drop(1), self.trans)
-
-# An example of Map
-#
-#     squares = 0, 1, 4, 9, 16, ...
-squares = Map(nats, lambda x: x*x)
-print("\nsquares:")
-print(squares)
-print()
+    def tail(self): 
+        return Map(self.stream.drop(1), self.trans)
 
 # Combine two streams `left` and `right` pointwise with a binary function
 # `combine`.
@@ -153,9 +144,6 @@ class Zip(Stream):
     def head(self): return self.combine(self.left.head(), self.right.head())
     def tail(self): return Zip(self.left.tail(), self.right.tail(), self.combine)
 
-tuples = Zip(nats, squares, lambda x, y: (x, y))
-print(tuples)
-
 ###################
 ### Square Root ###
 ###################
@@ -169,11 +157,6 @@ def next_root(n, a):
 def sqrts(a0, n):
     return Repeat(a0, lambda x: next_root(n, x))
 
-sqrt_ten = sqrts(3, 10)
-print("sqrts(3,10")
-print(sqrt_ten)
-print()
-
 # Group up consecutive elements of a stream.
 #
 #     by_twos((a0, a1, a2, a3, a4, ...))
@@ -181,10 +164,6 @@ print()
 #     (a0, a1), (a1, a2), (a2, a3), (a3, a4), ...
 def by_twos(stream):
     return Zip(stream, stream.tail())
-
-print("by_twos:")
-print(by_twos(nats))
-print()
 
 # Given that `stream` is a converging sequence of numbers,
 #
@@ -197,19 +176,10 @@ def within(eps, stream):
         if (abs(a - b)) < eps:
             return b
 
-guess = within(0.001, sqrt_ten)
-print("guess")
-print(guess)
-print()
-
 # Approximate the square root of `n` within an accuracy of `eps`, using `a0` as
 # an initial approximation.
 def sqrt(a0, eps, n):
     return within(eps, sqrts(a0, n))
-
-print("sqrt(3, 0.001, 10)")
-print(sqrt(3, 0.001, 10))
-print()
 
 # Given that `stream` is a converging sequence of numbers,
 #
@@ -228,10 +198,6 @@ def relative(eps, stream):
 def rsqrt(a0, eps, n):
     return relative(eps, sqrts(a0, n))
 
-print("rsqrt(3, 0.001, 10)")
-print(rsqrt(3, 0.001, 10))
-print()
-
 
 #################################
 ### Numerical Differentiation ###
@@ -242,8 +208,6 @@ print()
 #     halves(h) = h, h/2, h/4, h/16, h/32, ...
 def halves(h):
     return Repeat(h, lambda x: x / 2)
-
-print(halves(8))
 
 # For a function `f`, compute an approximation of the derivative f'(x) using `h`
 # as a distance.
@@ -263,14 +227,8 @@ expn  = differentiate(1.0, 10, lambda x: 2**x)
 dexpn = differentiate(1.0,  5, lambda x: 2**(2**x))
 trig  = differentiate(1.0, 10, lambda x: 2*sin(x))
 
-print("\ntrig")
-print(trig)
-
 def diff(h0, eps, x, f):
     return within(eps, differentiate(h0, x, f))
-
-print("\ndiff:")
-print(diff(1.0, 0.0000000000000000001, 10, lambda x: 2 * sin(x)))
 
 # Given a stream of halving approximations, eliminate the error of order `n`,
 # producing a faster-converging stream of approximations.
@@ -294,9 +252,6 @@ def order(stream):
 def improve(stream):
     return elim_error(order(stream), stream)
 
-print("\ntrig")
-print(improve(trig))
-
 # Drastically improve the convergence rate of a stream of halving approximations
 # by iterating the above `improve` function to eliminate more error with each
 # successive approximation.
@@ -307,9 +262,3 @@ def super_improve(stream):
 # beginning at a distance of `h0`.
 def super_diff(h0, eps, x, f):
     return within(eps, super_improve(differentiate(h0, x, f)))
-
-print("\nsuper_improve")
-print(super_improve(trig))
-
-print("\nsuper_diff:")
-print(super_diff(1.0, 0.0001, 10, lambda x: 2 * sin(x)))
