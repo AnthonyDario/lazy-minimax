@@ -53,9 +53,8 @@ def moves(pos):
                 new_move = [r[:] for r in pos.pos]
                 new_move[i][j] = pos.player()
                 next_moves.append(Position(new_move))
-
     
-    return FiniteStream(next_moves) if len(next_moves) > 0 else empty
+    return next_moves
 
 def static(pos):
     rows = [0, 0, 0]
@@ -89,16 +88,16 @@ class Tree:
     def __repr__(self):
         curr   = [repr(self.node())]
         childs = ["\n\t" + repr(child.node()).replace("\n", "\n\t") 
-                  for child in self.desc().take(3)]
+                  for child in self.desc()[3:]]
         return "\n".join(curr + childs) + "\n..."
 
 class RepTree(Tree):
     def __init__(self, f, a):
         self.a = a
-        self.f = Map(f(a), lambda x: RepTree(f, x))
+        self.f = f
 
     def node(self): return self.a
-    def desc(self): return self.f
+    def desc(self): return [RepTree(self.f, a) for a in self.f(self.a)]
 
 class MapTree(Tree):
     def __init__(self, tree, f):
@@ -106,7 +105,7 @@ class MapTree(Tree):
         self.trans = f
 
     def node(self): return self.trans(self.tree.node())
-    def desc(self): return Map(tree.desc, lambda x: MapTree(x, self.trans))
+    def desc(self): return [MapTree(self.trans(tree), self.trans) for tree in self.tree.desc]
 
 gametree = RepTree(moves, Position())
 
@@ -114,14 +113,6 @@ class Prune(Tree):
     def __init__(self, tree, depth):
         self.tree = tree
         self.depth = depth
-
-    
-def prune(depth, tree):
-    if depth == 0:
-        return tree
-    else:
-        return tree 
-
 
 #print(f"tic:\n{tic}\n")
 print(f"tac:\n{gametree}\n")
@@ -137,5 +128,5 @@ def descend(tree):
             print(f"descending on:\n{d.node()}")
             descend(d)
 
-#descend(gametree)
+descend(gametree)
 
