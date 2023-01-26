@@ -37,10 +37,10 @@ class Position:
         return "\n-+-+-\n".join(rows)
     
     def player(self):
-        return "O" if sum(
+        return "X" if sum(
             [sum([0 if cell == " " else 1 for cell in row]) 
             for row in self.pos]
-        ) % 2 == 0 else "X"
+        ) % 2 == 0 else "O"
 
 # position -> listof position
 def moves(pos):
