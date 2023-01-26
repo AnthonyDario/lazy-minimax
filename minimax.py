@@ -44,7 +44,8 @@ class Position:
 
 # position -> listof position
 def moves(pos):
-    if pos == None: return None
+    if pos == None or static(pos) != 0: return []
+    
 
     next_moves = []
     for i, row in enumerate(pos.pos):
@@ -125,8 +126,8 @@ def descend(tree):
         print(d)
 
 # Decomposed maximium and minimum functions
-def maximize(tree):
-    return max(maxi)
+# ------------------------------------
+def maximize(tree): return max(maxi)
 
 def maxi(tree):
     if len(tree.desc()) == 0: return [tree.node()]
@@ -152,10 +153,57 @@ def minleq(ns, pot):
     elif ns[0] <= pot: return true
     else: return minleq(ns[1:], pot)
 
+# Optimizations
+# ------------------------------------
+class HighFirst(Tree):
+    def __init__(self, tree):
+        self.tree = tree
+
+    def node(self): return self.tree.node()
+    def desc(self): 
+        lows = [LowFirst(t) for t in self.tree.desc()]
+        return sorted(lows, reverse=True, key=lambda x: x.node())
+
+class LowFirst(Tree):
+    def __init__(self, tree):
+        self.tree = tree
+
+    def node(self): return self.tree.node()
+    def desc(self): 
+        highs = [HighFirst(t) for t in self.tree.desc()]
+        return sorted(highs, reverse=False, key=lambda x: x.node())
+
+def red_tree(f, g, a, tree):
+    return f(tree.node(), red_tree_prime(f, g, a, tree.desc()))
+
+def red_tree_prime(f, g, a, trees):
+    if trees == []: return a
+    return g(red_tree(f, g, a, trees[0]), red_tree_prime(f, g, a, trees[1:]))
 
 gametree = RepTree(moves, Position())
-print(f"tac:\n{gametree}\n")
-#descend(MapTree(Prune(gametree, 5), static))
-evaluation = max(maxi(MapTree(Prune(gametree, 8), static)))
+
+# Testing out reduce tree
+'''
+def add(x, y): return x + y
+sumtree = red_tree(add, add, 0, MapTree(Prune(gametree, 5), static))
+print(sumtree)
+
+position = Position([
+    ["O", "X", "X"],
+    ["O", "O", " "],
+    ["O", " ", " "],
+])
+
+print(static(position))
+'''
+
+# minimax: 3.28
+#evaluation = max(maxi(MapTree(Prune(gametree, 8), static)))
+
+# High first: 5.34 seconds
+evaluation = max(maxi(HighFirst(MapTree(Prune(gametree, 8), static))))
+
+# Best Moves
+#evaluation = max(maxi(HighFirst(MapTree(Prune(gametree, 8), static)))
 
 print(f"evaluation: {evaluation}")
