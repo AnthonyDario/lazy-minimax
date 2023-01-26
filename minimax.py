@@ -200,10 +200,18 @@ print(static(position))
 # minimax: 3.28
 #evaluation = max(maxi(MapTree(Prune(gametree, 8), static)))
 
-# High first: 5.34 seconds
-evaluation = max(maxi(HighFirst(MapTree(Prune(gametree, 8), static))))
+# High first, sort the descendents: 5.34 seconds
+#evaluation = max(maxi(HighFirst(MapTree(Prune(gametree, 8), static))))
 
-# Best Moves
-#evaluation = max(maxi(HighFirst(MapTree(Prune(gametree, 8), static)))
+# Only the three Best Moves: 3.59
+class TakeTree(Tree):
+    def __init__(self, n, tree):
+        self.tree = tree
+        self.n = n
+
+    def node(self): return self.tree.node()
+    def desc(self): return self.tree.desc()[self.n:]
+
+evaluation = max(maxi(TakeTree(3, HighFirst(MapTree(Prune(gametree, 8), static)))))
 
 print(f"evaluation: {evaluation}")
