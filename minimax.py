@@ -6,14 +6,26 @@ from nmfp_template import Stream, Map, Repeat
 
 # Helper streams
 # ------------------------------------
-empty = Repeat(None)
+emptystream = Repeat(None)
 
 class FiniteStream(Stream):
     def __init__(self, lst):
         self.lst = lst
 
     def head(self): return self.lst[0]
-    def tail(self): return FiniteStream(self.lst[1:]) if len(self.lst) > 1 else empty
+    def tail(self): return FiniteStream(self.lst[1:]) if len(self.lst) > 1 else emptystream
+
+def min_stream(s):
+    val = -10000
+    for item in s:
+        if item is None: return val
+        val = val if val < item else item
+
+def max_stream(s):
+    val = 10000
+    for item in s:
+        if item is None: return val
+        val = val if val > item else item
 
 # Tic-tac-toe
 # ------------------------------------
@@ -35,6 +47,11 @@ class Position:
         strings = [[cell for cell in row] for row in self.pos]
         rows = ["|".join(row) for row in strings]
         return "\n-+-+-\n".join(rows)
+
+    def move(self, i, j):
+        new_move = [r[:] for r in self.pos]
+        new_move[i][j] = self.player()
+        return Position(new_move)
     
     def player(self):
         return "X" if sum(
@@ -43,19 +60,24 @@ class Position:
         ) % 2 == 0 else "O"
 
 # position -> listof position
-def moves(pos):
-    if pos == None or static(pos) != 0: return []
-    
+class Moves(Stream):
+    def __init__(self, pos, row=0, col=0):
+        self.pos = pos
+        self.row = row
+        self.col = col
 
-    next_moves = []
-    for i, row in enumerate(pos.pos):
-        for j, cell in enumerate(row):
-            if cell == " ":
-                new_move = [r[:] for r in pos.pos]
-                new_move[i][j] = pos.player()
-                next_moves.append(Position(new_move))
-    
-    return next_moves
+    def head(self): 
+        return self.pos.move(self.row, self.col)
+
+    def tail(self):
+        row = self.row
+        col = self.col
+        while self.pos.pos[row][col] != " " and row < 3:
+            col = (col + 1) % 3
+            row = row + 1 if col == 0 else row
+        
+        if row >= 3: return emptystream
+        return Moves(self.pos, col, row)
 
 def static(pos):
     rows = [0, 0, 0]
@@ -89,7 +111,7 @@ class Tree:
     def __repr__(self):
         curr   = [repr(self.node())]
         childs = ["\n\t" + repr(child.node()).replace("\n", "\n\t") 
-                  for child in self.desc()[3:]]
+                  for child in self.desc().take(3)]
         return "\n".join(curr + childs) + "\n..."
 
 class RepTree(Tree):
@@ -98,7 +120,7 @@ class RepTree(Tree):
         self.f = f
 
     def node(self): return self.a
-    def desc(self): return [RepTree(self.f, a) for a in self.f(self.a)]
+    def desc(self): return Map(self.f(self.a), lambda x: RepTree(self.f, x))
 
 class MapTree(Tree):
     def __init__(self, tree, f):
@@ -106,8 +128,7 @@ class MapTree(Tree):
         self.trans = f
 
     def node(self): return self.trans(self.tree.node())
-    def desc(self): return [MapTree(t, self.trans) 
-                            for t in self.tree.desc()]
+    def desc(self): return Map(self.tree.desc(), lambda x: MapTree(x, self.trans))
 
 class Prune(Tree):
     def __init__(self, tree, depth):
@@ -115,9 +136,9 @@ class Prune(Tree):
         self.depth = depth
 
     def node(self): return self.tree.node()
-    def desc(self): 
-        if self.depth == 0: return []
-        return [Prune(t, self.depth - 1) for t in self.tree.desc()]
+    def desc(self):
+        if self.depth == 0: return emptystream
+        return Map(self.tree.desc(), lambda x: Prune(x, self.depth - 1))
 
 # Method for traversing the tree
 def descend(tree):
@@ -130,23 +151,25 @@ def descend(tree):
 def maximize(tree): return max(maxi)
 
 def maxi(tree):
-    if len(tree.desc()) == 0: return [tree.node()]
-    return [min(ms) for ms in [mini(t) for t in tree.desc()]]
+    if tree.desc().head() is None: return emptystream
+    return Map(Map(tree.desc(), lambda x: mini(x)), lambda x: min_stream(x))
 
 def minimize(tree):
-    return min(mini)
+    return min_stream(mini)
 
 def mini(tree):
-    if len(tree.desc()) == 0: return [tree.node()]
-    return [max(ms) for ms in [maxi(t) for t in tree.desc()]]
-
-def mapmin(xs):
-    return [min(xs[0])].append(omit(min(xs[0]), xs[1:]))
+    if tree.desc().head() is None: return emptystream
+    return Map(Map(tree.desc(), lambda x: maxi(x)), lambda x: max_stream(x))
 
 def omit(pot, xs):
-    if len(xs) == 0: return []
-    elif minleq(xs[0], pot): return omit(pot, xs[1:])
+    if xs.head() is None: return emptystream
+    elif minleq(xs.head(), pot): return omit(pot, xs.tail())
     else: return [min(xs[0])].append(omit(min(xs[0]), xs[1:]))
+
+
+    #if len(xs) == 0: return []
+    #elif minleq(xs[0], pot): return omit(pot, xs[1:])
+    #else: return [min(xs[0])].append(omit(min(xs[0]), xs[1:]))
 
 def minleq(ns, pot):
     if len(ns) == 0: return false
@@ -180,7 +203,7 @@ def red_tree_prime(f, g, a, trees):
     if trees == []: return a
     return g(red_tree(f, g, a, trees[0]), red_tree_prime(f, g, a, trees[1:]))
 
-gametree = RepTree(moves, Position())
+gametree = RepTree(lambda x: Moves(x), Position())
 
 # Testing out reduce tree
 '''
@@ -197,7 +220,15 @@ position = Position([
 print(static(position))
 '''
 
+#print(f"gametree: {gametree}")
+
 # minimax: 3.28
+prune = Prune(gametree, 8)
+print(f'prune: {prune}')
+mapt = MapTree(prune, static)
+print(f'mapt: {mapt}')
+mx = maxi(mapt)
+print(f'mx: {mx}')
 #evaluation = max(maxi(MapTree(Prune(gametree, 8), static)))
 
 # High first, sort the descendents: 5.34 seconds
@@ -212,6 +243,6 @@ class TakeTree(Tree):
     def node(self): return self.tree.node()
     def desc(self): return self.tree.desc()[self.n:]
 
-evaluation = max(maxi(TakeTree(3, HighFirst(MapTree(Prune(gametree, 8), static)))))
+#evaluation = max(maxi(TakeTree(3, HighFirst(MapTree(Prune(gametree, 8), static)))))
 
-print(f"evaluation: {evaluation}")
+#print(f"evaluation: {evaluation}")

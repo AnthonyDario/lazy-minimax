@@ -107,8 +107,8 @@ class Repeat(Stream):
 #
 #     zeroes = 0, 0, 0, 0, 0, ...
 #     nats = 1, 2, 3, 4, ...
-zeroes = Repeat(0)
-nats = Repeat(0, lambda x: x + 1)
+#zeroes = Repeat(0)
+#nats = Repeat(0, lambda x: x + 1)
 
 # Transform a `stream` by applying a given `trans` function to each element.
 #
@@ -118,7 +118,7 @@ class Map(Stream):
         self.stream = stream
         self.trans = f
 
-    def head(self): return self.trans(self.stream[0])
+    def head(self): return self.trans(self.stream.head())
     def tail(self): 
         return Map(self.stream.drop(1), self.trans)
 
@@ -220,12 +220,12 @@ def differentiate(h0, x, f):
     return Map(halves(h0), lambda h: easy_diff(h, x, f))
 
 # Some example differentiation streams
-const = differentiate(1.0, 10, lambda x: 5)
-lin   = differentiate(1.0, 10, lambda x: 12*x)
-quad  = differentiate(1.0, 10, lambda x: x**2)
-expn  = differentiate(1.0, 10, lambda x: 2**x)
-dexpn = differentiate(1.0,  5, lambda x: 2**(2**x))
-trig  = differentiate(1.0, 10, lambda x: 2*sin(x))
+#const = differentiate(1.0, 10, lambda x: 5)
+#lin   = differentiate(1.0, 10, lambda x: 12*x)
+#quad  = differentiate(1.0, 10, lambda x: x**2)
+#expn  = differentiate(1.0, 10, lambda x: 2**x)
+#dexpn = differentiate(1.0,  5, lambda x: 2**(2**x))
+#trig  = differentiate(1.0, 10, lambda x: 2*sin(x))
 
 def diff(h0, eps, x, f):
     return within(eps, differentiate(h0, x, f))
