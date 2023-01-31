@@ -16,6 +16,14 @@ class FiniteStream(Stream):
     def head(self): return self.lst[0]
     def tail(self): return FiniteStream(self.lst[1:]) if len(self.lst) > 1 else emptystream
 
+class Cons(Stream):
+    def __init__(self, val, stream):
+        self.val = val
+        self.stream = stream
+
+    def head(self): return self.val
+    def tail(self): return self.stream
+
 def min_stream(s):
     if s.head() is None: return None
 
@@ -164,34 +172,70 @@ def descend(tree):
 
 # Decomposed maximium and minimum functions
 # ------------------------------------
+
+# Tree -> num
 def maximize(tree):
     return max_stream(maxi)
 
-def maxi(tree):
-    if tree.desc().head().node() is None: return Repeat(tree.node(), lambda x: None)
-    return Map(Map(tree.desc(), lambda x: mini(x)), lambda x: 0 if x is None else min_stream(x))
-
+# Tree -> num
 def minimize(tree):
     return min_stream(mini)
 
-def mini(tree):
-    if tree.desc().head().node() is None: return Repeat(tree.node(), lambda x: None)
-    return Map(Map(tree.desc(), lambda x: maxi(x)), lambda x: 0 if x is None else max_stream(x))
+# Tree -> num Stream
+def maxi(tree):
+    if tree.desc().head().node() is None:
+        return Repeat(tree.node(), lambda x: None)
 
-#def omit(pot, xs):
-#    if xs.head() is None: return emptystream
-#    elif minleq(xs.head(), pot): return omit(pot, xs.tail())
-#    else: return [min(xs[0])].append(omit(min(xs[0]), xs[1:]))
-#
-#
-#    #if len(xs) == 0: return []
-#    #elif minleq(xs[0], pot): return omit(pot, xs[1:])
-#    #else: return [min(xs[0])].append(omit(min(xs[0]), xs[1:]))
-#
-#def minleq(ns, pot):
-#    if len(ns) == 0: return false
-#    elif ns[0] <= pot: return true
-#    else: return minleq(ns[1:], pot)
+    return mapmin(Map(tree.desc(), lambda x: mini(x)))
+
+# Tree -> num Stream
+def mini(tree):
+    if tree.desc().head().node() is None: 
+        return Repeat(tree.node(), lambda x: None)
+
+    return mapmax(Map(tree.desc(), lambda x: maxi(x)))
+
+# num Stream Stream -> num Stream
+def mapmin(s):
+    min_nums = 0 if s.head() is None else min_stream(s.head())
+    return Cons(min_nums, omit_min(min_nums, s.tail()))
+
+# num -> num Stream Stream -> num Stream
+def omit_min(pot, xs):
+    if xs.head().head() is None:
+        return emptystream
+    elif minleq(xs.head(), pot):
+        return omit_min(pot, xs.tail())
+    else: 
+        min_nums = min_stream(xs.head())
+        return Cons(min_nums, omit_min(min_nums, xs.tail()))
+
+# num Stream -> num -> bool
+def minleq(ns, pot):
+    if ns.head() is None: return False
+    elif ns.head() <= pot: return True
+    else: return minleq(ns.tail(), pot)
+
+# num Stream Stream -> num Stream
+def mapmax(s):
+    max_nums = 0 if s.head() is None else max_stream(s.head())
+    return Cons(max_nums, omit_max(max_nums, s.tail()))
+
+# num -> num Stream Stream -> num Stream
+def omit_max(pot, xs):
+    if xs.head().head() is None:
+        return emptystream
+    elif maxgeq(xs.head(), pot):
+        return omit_max(pot, xs.tail())
+    else: 
+        max_nums = max_stream(xs.head())
+        return Cons(max_nums, omit_max(max_nums, xs.tail()))
+
+# num Stream -> num -> bool
+def maxgeq(ns, pot):
+    if ns.head() is None: return False
+    elif ns.head() <= pot: return True
+    else: return maxgeq(ns.tail(), pot)
 
 # Optimizations
 # ------------------------------------
@@ -222,8 +266,8 @@ def red_tree_prime(f, g, a, trees):
 
 gametree = RepTree(Position(), lambda x: Moves(x),)
 
-# minimax: 90 seconds!
-evaluation = max_stream(maxi(MapTree(Prune(gametree, 8), static)))
+# minimax: > 271.51s
+evaluation = max_stream(maxi(MapTree(Prune(gametree, 6), static)))
 
 # High first, sort the descendents:
 #evaluation = max_stream(maxi(HighFirst(MapTree(Prune(gametree, 2), static))))
