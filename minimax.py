@@ -295,17 +295,27 @@ gametree = RepTree(Position(), lambda x: Moves(x),)
 # Depth 4: 3.76s
 # Depth 5: 66.97s
 # Depth 6: > 900s
-evaluation = max_stream(maxi(HighFirst(MapTree(Prune(gametree, 5), static))))
+#evaluation = max_stream(maxi(HighFirst(MapTree(Prune(gametree, 5), static))))
 
-# Only the three Best Moves:
 class TakeTree(Tree):
     def __init__(self, n, tree):
         self.tree = tree
         self.n = n
 
     def node(self): return self.tree.node()
-    def desc(self): return self.tree.desc()[self.n:]
+    def desc(self): 
+        d = Repeat(EmptyTree())
+        tmp = self.tree.desc()
+        for i in range(self.n):
+            d = Cons(tmp.head(), d)
+            tmp.tail
 
-#evaluation = max_stream(maxi(TakeTree(3, HighFirst(MapTree(Prune(gametree, 8), static)))))
+        return d
+
+# Only the three Best Moves:
+# Depth 4: 1.27
+# Depth 5: 22.21s
+# Depth 6: > 193s
+evaluation = max_stream(maxi(TakeTree(3, HighFirst(MapTree(Prune(gametree, 6), static)))))
 
 print(f"evaluation: {evaluation}")
