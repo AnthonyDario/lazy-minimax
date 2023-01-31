@@ -9,7 +9,7 @@
 from nmfp_template import Stream, Map, Repeat
 
 # ------------------------------------
-# Helper streams
+# Stream helpers
 # ------------------------------------
 
 emptystream = Repeat(None)
@@ -56,6 +56,7 @@ def place_item(f, i, s):
     else:
         return Cons(s.head(), place_item(f, i, s.tail()))
 
+# ------------------------------------
 # Tic-tac-toe
 # ------------------------------------
 
@@ -226,8 +227,12 @@ class TakeTree(Tree):
 
         return d
 
+# ------------------------------------
 # Decomposed maximium and minimum functions
 # ------------------------------------
+
+# For more information on these functions, see "Why Functional Programming
+# Matters"
 
 # Tree -> num
 def maximize(tree):
@@ -293,6 +298,7 @@ def maxgeq(ns, pot):
     elif ns.head() <= pot: return True
     else: return maxgeq(ns.tail(), pot)
 
+# ------------------------------------
 # Experiments
 # ------------------------------------
 gametree = RepTree(Position(), lambda x: Moves(x),)
