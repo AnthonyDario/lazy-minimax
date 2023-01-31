@@ -40,6 +40,24 @@ def max_stream(s):
         if item is None: return val         # End of the stream
         val = val if val > item else item
 
+def sort_stream(f, s):
+    sort = emptystream
+    for item in s:
+        #print(f'sort_stream item: {item.node()}')
+        if item is None or item.node() is None: break
+        sort = place_item(f, s.head(), sort)
+
+    #print(f'returning sort:\n {sort}')
+    return sort
+
+def place_item(f, i, s):
+    if s.head() is None:
+        return Cons(i, emptystream)
+    elif f(i, s.head()):
+        return Cons(i, s)
+    else:
+        return Cons(s.head(), place_item(f, i, s.tail()))
+
 # Tic-tac-toe
 # ------------------------------------
 
@@ -245,8 +263,9 @@ class HighFirst(Tree):
 
     def node(self): return self.tree.node()
     def desc(self): 
-        lows = [LowFirst(t) for t in self.tree.desc()]
-        return sorted(lows, reverse=True, key=lambda x: x.node())
+        lows = Map(self.tree.desc(), lambda x: LowFirst(x))
+        sort = sort_stream(lambda x, y: x.node() > y.node(), lows)
+        return Map(sort, lambda x: EmptyTree() if x is None else x)
 
 class LowFirst(Tree):
     def __init__(self, tree):
@@ -254,23 +273,29 @@ class LowFirst(Tree):
 
     def node(self): return self.tree.node()
     def desc(self): 
-        highs = [HighFirst(t) for t in self.tree.desc()]
-        return sorted(highs, reverse=False, key=lambda x: x.node())
+        highs = Map(self.tree.desc(), lambda x: HighFirst(x))
+        sort = sort_stream(lambda x, y: x.node() < y.node(), highs)
+        return Map(sort, lambda x: EmptyTree() if x is None else x)
 
-def red_tree(f, g, a, tree):
-    return f(tree.node(), red_tree_prime(f, g, a, tree.desc()))
-
-def red_tree_prime(f, g, a, trees):
-    if trees == []: return a
-    return g(red_tree(f, g, a, trees[0]), red_tree_prime(f, g, a, trees[1:]))
+#def red_tree(f, g, a, tree):
+#    return f(tree.node(), red_tree_prime(f, g, a, tree.desc()))
+#
+#def red_tree_prime(f, g, a, trees):
+#    if trees == []: return a
+#    return g(red_tree(f, g, a, trees[0]), red_tree_prime(f, g, a, trees[1:]))
 
 gametree = RepTree(Position(), lambda x: Moves(x),)
 
-# minimax: > 271.51s
-evaluation = max_stream(maxi(MapTree(Prune(gametree, 6), static)))
+# minimax: 
+# Depth 5 > 5.31
+# Depth 8 > 271.51s
+#evaluation = max_stream(maxi(MapTree(Prune(gametree, 8), static)))
 
 # High first, sort the descendents:
-#evaluation = max_stream(maxi(HighFirst(MapTree(Prune(gametree, 2), static))))
+# Depth 4: 3.76s
+# Depth 5: 66.97s
+# Depth 6: > 900s
+evaluation = max_stream(maxi(HighFirst(MapTree(Prune(gametree, 5), static))))
 
 # Only the three Best Moves:
 class TakeTree(Tree):
