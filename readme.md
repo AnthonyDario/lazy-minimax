@@ -1,5 +1,4 @@
 # Minimax Algorithm With Lazy Programming in Python
----
 
 This is an implementation of the minimax algorithm implemented with lazy
 programming in python. The implementation follows John Hughe's paper "Why
