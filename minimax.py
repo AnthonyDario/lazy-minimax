@@ -3,58 +3,8 @@
 # Based on John Hughes paper "Why Functional Programming Matters" and Paul
 # Downen's "Numerical Methods with Functional Programming in Python"
 #
-# Descendents of trees are implemented using lazy streams. Does not help
-# runtime
-
-from nmfp_template import Stream, Map, Repeat
-
-# ------------------------------------
-# Stream helpers
-# ------------------------------------
-
-emptystream = Repeat(None)
-
-class Cons(Stream):
-    def __init__(self, val, stream):
-        self.val = val
-        self.stream = stream
-
-    def head(self): return self.val
-    def tail(self): return self.stream
-
-# Get the max and minimum elements of a finite stream
-def min_stream(s):
-    if s.head() is None: return None
-
-    val = 10000
-    for item in s:
-        if item is None: return val
-        val = val if val < item else item
-
-def max_stream(s):
-    if s.head() is None: return None
-
-    val = -10000
-    for item in s:
-        if item is None: return val
-        val = val if val > item else item
-
-# Sort the elements of a finite stream s with the given function, f
-def sort_stream(f, s):
-    sort = emptystream
-    for item in s:
-        if item is None or item.node() is None: break
-        sort = place_item(f, s.head(), sort)
-
-    return sort
-
-def place_item(f, i, s):
-    if s.head() is None:
-        return Cons(i, emptystream)
-    elif f(i, s.head()):
-        return Cons(i, s)
-    else:
-        return Cons(s.head(), place_item(f, i, s.tail()))
+# Descendents of trees are implemented using standard python lists. This is not a
+# fully lazy implementation, see the "streams" branch for a lazier implementation.
 
 # ------------------------------------
 # Tic-tac-toe
@@ -89,32 +39,21 @@ class Position:
             for row in self.pos]
         ) % 2 == 0 else "O"
 
-# A stream of possible next states from the current position
-class Moves(Stream):
-    def __init__(self, pos, row=0, col=0):
-        self.pos = pos
-        self.row = row
-        self.col = col
+# position -> listof position
+def moves(pos):
+    if pos == None or static(pos) != 0: return []
 
-    def head(self): 
-        if self.pos is None: return None
-        return self.pos.move(self.row, self.col)
+    next_moves = []
+    for i, row in enumerate(pos.pos):
+        for j, cell in enumerate(row):
+            if cell == " ":
+                new_move = [r[:] for r in pos.pos]
+                new_move[i][j] = pos.player()
+                next_moves.append(Position(new_move))
 
-    def tail(self):
-        if self.pos is None: return Repeat(EmptyTree)
-
-        col = (self.col + 1) % 3
-        row = self.row + 1 if col == 0 else self.row
-
-        while row < 3 and self.pos.pos[row][col] != " ":
-            col = (col + 1) % 3
-            row = row + 1 if col == 0 else row
-        
-        if row >= 3: return emptystream
-
-        return Moves(self.pos, row, col)
-
-# Statically evaluate tic-tac-toe positions. 1 if 'X' has won, -1 of 'O' has
+    return next_moves
+    
+# Statically evaluate tic-tac-toe positions. 1 if 'X' has won, -1 if 'O' has
 # won, 0 otherwise
 def static(pos):
     if pos is None: return None
@@ -134,13 +73,19 @@ def static(pos):
             if i - j == 0: diag[0] = diag[0] + val
             if i + j == 2: diag[1] = diag[1] + val
 
-        if rows[i] == 3 or rows[i] == -3: return rows[i] / 3
+        if rows[i] == 3 or rows[i] == -3: 
+            #print(f'returning: rows[i] / 3: {rows[i] / 3}')
+            return rows[i] / 3
 
     for col in cols:
-        if col == 3 or col == -3: return col / 3
+        if col == 3 or col == -3: 
+            #print(f'returning: col / 3: {col / 3}')
+            return col / 3
 
     for d in diag:
-        if d == 3 or d == -3: return d / 3
+        if d == 3 or d == -3: 
+            #print(f'returning: d / 3: {d / 3}')
+            return d / 3
 
     return 0
 
@@ -151,7 +96,7 @@ class Tree:
     def __repr__(self):
         curr   = [repr(self.node())]
         childs = ["\n\t" + repr(child.node()).replace("\n", "\n\t") 
-                  for child in self.desc().take(3)]
+                  for child in self.desc()[:3]]
         return "\n".join(curr + childs) + "\n..."
 
 # Repeat the function on each node to get the descendents
@@ -161,7 +106,7 @@ class RepTree(Tree):
         self.f = f
 
     def node(self): return self.a
-    def desc(self): return Map(self.f(self.a), lambda x: RepTree(x, self.f))
+    def desc(self): return [RepTree(a, self.f) for a in self.f(self.a)]
 
 # Apply function f to every node in the tree
 class MapTree(Tree):
@@ -170,7 +115,7 @@ class MapTree(Tree):
         self.trans = f
 
     def node(self): return self.trans(self.tree.node())
-    def desc(self): return Map(self.tree.desc(), lambda x: MapTree(x, self.trans))
+    def desc(self): return [MapTree(t, self.trans) for t in self.tree.desc()]
 
 # A tree with a set depth
 class Prune(Tree):
@@ -180,14 +125,8 @@ class Prune(Tree):
 
     def node(self): return self.tree.node()
     def desc(self):
-        if self.depth == 0: return Repeat(EmptyTree())
-        return Map(self.tree.desc(), lambda x: Prune(x, self.depth - 1))
-
-# A tree with empty descendents and empty nodes. Serves a similar purpose to an
-# empty list
-class EmptyTree(Tree):
-    def node(self): return None
-    def desc(self): return Repeat(EmptyTree())
+        if self.depth == 0: return []
+        return [Prune(t, self.depth - 1) for t in self.tree.desc()]
 
 # Sort the descendents high to low
 class HighFirst(Tree):
@@ -196,9 +135,8 @@ class HighFirst(Tree):
 
     def node(self): return self.tree.node()
     def desc(self): 
-        lows = Map(self.tree.desc(), lambda x: LowFirst(x))
-        sort = sort_stream(lambda x, y: x.node() > y.node(), lows)
-        return Map(sort, lambda x: EmptyTree() if x is None else x)
+        lows = [LowFirst(t) for t in self.tree.desc()]
+        return sorted(lows, reverse=True, key=lambda x: x.node())
 
 # Sort the descendents low to high
 class LowFirst(Tree):
@@ -207,9 +145,8 @@ class LowFirst(Tree):
 
     def node(self): return self.tree.node()
     def desc(self): 
-        highs = Map(self.tree.desc(), lambda x: HighFirst(x))
-        sort = sort_stream(lambda x, y: x.node() < y.node(), highs)
-        return Map(sort, lambda x: EmptyTree() if x is None else x)
+        highs = [HighFirst(t) for t in self.tree.desc()]
+        return sorted(highs, reverse=False, key=lambda x: x.node())
 
 # Take only the first n descendents of the tree
 class TakeTree(Tree):
@@ -218,106 +155,53 @@ class TakeTree(Tree):
         self.n = n
 
     def node(self): return self.tree.node()
-    def desc(self): 
-        d = Repeat(EmptyTree())
-        tmp = self.tree.desc()
-        for i in range(self.n):
-            d = Cons(tmp.head(), d)
-            tmp.tail
-
-        return d
+    def desc(self): return self.tree.desc()[self.n:]
 
 # ------------------------------------
 # Decomposed maximium and minimum functions
 # ------------------------------------
 
-# For more information on these functions, see "Why Functional Programming
-# Matters"
+# See "Why functional programming matters for an in-depth explanation of these
+# functions
+def maximize(tree): return max(maxi)
 
-# Tree -> num
-def maximize(tree):
-    return max_stream(maxi)
-
-# Tree -> num
-def minimize(tree):
-    return min_stream(mini)
-
-# Tree -> num Stream
 def maxi(tree):
-    if tree.desc().head().node() is None:
-        return Repeat(tree.node(), lambda x: None)
+    if len(tree.desc()) == 0: return [tree.node()]
+    return [min(ms) for ms in [mini(t) for t in tree.desc()]]
 
-    return mapmin(Map(tree.desc(), lambda x: mini(x)))
+def minimize(tree):
+    return min(mini)
 
-# Tree -> num Stream
 def mini(tree):
-    if tree.desc().head().node() is None: 
-        return Repeat(tree.node(), lambda x: None)
+    if len(tree.desc()) == 0: return [tree.node()]
+    return [max(ms) for ms in [maxi(t) for t in tree.desc()]]
 
-    return mapmax(Map(tree.desc(), lambda x: maxi(x)))
+def mapmin(xs):
+    return [min(xs[0])].append(omit(min(xs[0]), xs[1:]))
 
-# num Stream Stream -> num Stream
-def mapmin(s):
-    min_nums = 0 if s.head() is None else min_stream(s.head())
-    return Cons(min_nums, omit_min(min_nums, s.tail()))
+def omit(pot, xs):
+    if len(xs) == 0: return []
+    elif minleq(xs[0], pot): return omit(pot, xs[1:])
+    else: return [min(xs[0])].append(omit(min(xs[0]), xs[1:]))
 
-# num -> num Stream Stream -> num Stream
-def omit_min(pot, xs):
-    if xs.head().head() is None:
-        return emptystream
-    elif minleq(xs.head(), pot):
-        return omit_min(pot, xs.tail())
-    else: 
-        min_nums = min_stream(xs.head())
-        return Cons(min_nums, omit_min(min_nums, xs.tail()))
-
-# num Stream -> num -> bool
 def minleq(ns, pot):
-    if ns.head() is None: return False
-    elif ns.head() <= pot: return True
-    else: return minleq(ns.tail(), pot)
-
-# num Stream Stream -> num Stream
-def mapmax(s):
-    max_nums = 0 if s.head() is None else max_stream(s.head())
-    return Cons(max_nums, omit_max(max_nums, s.tail()))
-
-# num -> num Stream Stream -> num Stream
-def omit_max(pot, xs):
-    if xs.head().head() is None:
-        return emptystream
-    elif maxgeq(xs.head(), pot):
-        return omit_max(pot, xs.tail())
-    else: 
-        max_nums = max_stream(xs.head())
-        return Cons(max_nums, omit_max(max_nums, xs.tail()))
-
-# num Stream -> num -> bool
-def maxgeq(ns, pot):
-    if ns.head() is None: return False
-    elif ns.head() <= pot: return True
-    else: return maxgeq(ns.tail(), pot)
+    if len(ns) == 0: return false
+    elif ns[0] <= pot: return true
+    else: return minleq(ns[1:], pot)
 
 # ------------------------------------
-# Experiments
+# Optimizations
 # ------------------------------------
-gametree = RepTree(Position(), lambda x: Moves(x),)
 
-# minimax: 
-#   Depth 5 > 5.31
-#   Depth 8 > 271.51s
-#evaluation = max_stream(maxi(MapTree(Prune(gametree, 8), static)))
+gametree = RepTree(Position(), moves)
 
-# High first, sort the descendents:
-#   Depth 4: 3.76s
-#   Depth 5: 66.97s
-#   Depth 6: > 900s
-#evaluation = max_stream(maxi(HighFirst(MapTree(Prune(gametree, 5), static))))
+# minimax: 3.28
+#evaluation = max(maxi(MapTree(Prune(gametree, 8), static)))
 
-# Only the three Best Moves:
-#   Depth 4: 1.27
-#   Depth 5: 22.21s
-#   Depth 6: > 193s
-evaluation = max_stream(maxi(TakeTree(3, HighFirst(MapTree(Prune(gametree, 4), static)))))
+# High first, sort the descendents: 5.34 seconds
+#evaluation = max(maxi(HighFirst(MapTree(Prune(gametree, 8), static))))
+
+# Only the three Best Moves: 3.59
+evaluation = max(maxi(TakeTree(3, HighFirst(MapTree(Prune(gametree, 8), static)))))
 
 print(f"evaluation: {evaluation}")
