@@ -161,27 +161,46 @@ def maximize(tree): return max(maxi)
 
 def maxi(tree):
     if len(tree.desc()) == 0: return [tree.node()]
-    return [min(ms) for ms in [mini(t) for t in tree.desc()]]
+    return mapmin([mini(t) for t in tree.desc()])
 
 def minimize(tree):
     return min(mini)
 
 def mini(tree):
     if len(tree.desc()) == 0: return [tree.node()]
-    return [max(ms) for ms in [maxi(t) for t in tree.desc()]]
+    return mapmax([maxi(t) for t in tree.desc()])
 
 def mapmin(xs):
-    return [min(xs[0])].append(omit(min(xs[0]), xs[1:]))
+    min_xs = min(xs[0])
+    return [min_xs] + omit_min(min_xs, xs[1:])
+    
+def mapmax(xs):
+    max_xs = max(xs[0])
+    return [max_xs] + omit_max(max_xs, xs[1:])
 
-def omit(pot, xs):
+def omit_min(pot, xs):
     if len(xs) == 0: return []
-    elif minleq(xs[0], pot): return omit(pot, xs[1:])
-    else: return [min(xs[0])].append(omit(min(xs[0]), xs[1:]))
+    elif minleq(xs[0], pot): return omit_min(pot, xs[1:])
+    else: 
+        min_xs = min(xs[0])
+        return [min_xs] + omit_min(min_xs, xs[1:])
+
+def omit_max(pot, xs):
+    if len(xs) == 0: return []
+    elif maxgeq(xs[0], pot): return omit_max(pot, xs[1:])
+    else: 
+        max_xs = max(xs[0])
+        return [max_xs] + omit_max(max_xs, xs[1:])
 
 def minleq(ns, pot):
-    if len(ns) == 0: return false
-    elif ns[0] <= pot: return true
+    if len(ns) == 0: return False
+    elif ns[0] <= pot: return True
     else: return minleq(ns[1:], pot)
+
+def maxgeq(ns, pot):
+    if len(ns) == 0: return False
+    elif ns[0] >= pot: return True
+    else: return maxgeq(ns[1:], pot)
 
 # ------------------------------------
 # Experiments
@@ -189,13 +208,13 @@ def minleq(ns, pot):
 
 gametree = RepTree(Position(), moves)
 
-# minimax: 3.28
+# minimax: 3.86
 #evaluation = max(maxi(MapTree(Prune(gametree, 8), static)))
 
-# High first, sort the descendents: 5.34 seconds
+# High first, sort the descendents: 6.08 seconds
 #evaluation = max(maxi(HighFirst(MapTree(Prune(gametree, 8), static))))
 
-# Only the three Best Moves: 3.59
+# Only the three Best Moves: 4.06
 evaluation = max(maxi(TakeTree(3, HighFirst(MapTree(Prune(gametree, 8), static)))))
 
 print(f"evaluation: {evaluation}")
