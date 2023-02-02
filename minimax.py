@@ -1,20 +1,14 @@
 # Minimax with Functional Programming in Python
+#
+# Based on John Hughes paper "Why Functional Programming Matters" and Paul
+# Downen's "Numerical Methods with Functional Programming in Python"
+#
+# Descendents of trees are implemented using standard python lists. This is not a
+# fully lazy implementation, see the "streams" branch for a lazier implementation.
 
 from functools import reduce
-from nmfp_template import Stream, Map, Repeat
 
-
-# Helper streams
 # ------------------------------------
-empty = Repeat(None)
-
-class FiniteStream(Stream):
-    def __init__(self, lst):
-        self.lst = lst
-
-    def head(self): return self.lst[0]
-    def tail(self): return FiniteStream(self.lst[1:]) if len(self.lst) > 1 else empty
-
 # Tic-tac-toe
 # ------------------------------------
 
@@ -45,7 +39,6 @@ class Position:
 # position -> listof position
 def moves(pos):
     if pos == None or static(pos) != 0: return []
-    
 
     next_moves = []
     for i, row in enumerate(pos.pos):
@@ -57,6 +50,8 @@ def moves(pos):
     
     return next_moves
 
+# Statically evaluate tic-tac-toe positions. 1 if 'X' has won, -1 if 'O' has
+# won, 0 otherwise
 def static(pos):
     rows = [0, 0, 0]
     cols = [0, 0, 0]
@@ -83,6 +78,7 @@ def static(pos):
 
     return 0
 
+# ------------------------------------
 # Trees
 # ------------------------------------
 class Tree:
@@ -119,14 +115,38 @@ class Prune(Tree):
         if self.depth == 0: return []
         return [Prune(t, self.depth - 1) for t in self.tree.desc()]
 
-# Method for traversing the tree
-def descend(tree):
-    for d in tree.desc():
-        if d.node() is None: return
-        print(d)
+class HighFirst(Tree):
+    def __init__(self, tree):
+        self.tree = tree
 
+    def node(self): return self.tree.node()
+    def desc(self): 
+        lows = [LowFirst(t) for t in self.tree.desc()]
+        return sorted(lows, reverse=True, key=lambda x: x.node())
+
+class LowFirst(Tree):
+    def __init__(self, tree):
+        self.tree = tree
+
+    def node(self): return self.tree.node()
+    def desc(self): 
+        highs = [HighFirst(t) for t in self.tree.desc()]
+        return sorted(highs, reverse=False, key=lambda x: x.node())
+
+class TakeTree(Tree):
+    def __init__(self, n, tree):
+        self.tree = tree
+        self.n = n
+
+    def node(self): return self.tree.node()
+    def desc(self): return self.tree.desc()[self.n:]
+
+# ------------------------------------
 # Decomposed maximium and minimum functions
 # ------------------------------------
+
+# See "Why functional programming matters for an in depth explanation of these
+# functions
 def maximize(tree): return max(maxi)
 
 def maxi(tree):
@@ -153,49 +173,11 @@ def minleq(ns, pot):
     elif ns[0] <= pot: return true
     else: return minleq(ns[1:], pot)
 
+# ------------------------------------
 # Optimizations
 # ------------------------------------
-class HighFirst(Tree):
-    def __init__(self, tree):
-        self.tree = tree
-
-    def node(self): return self.tree.node()
-    def desc(self): 
-        lows = [LowFirst(t) for t in self.tree.desc()]
-        return sorted(lows, reverse=True, key=lambda x: x.node())
-
-class LowFirst(Tree):
-    def __init__(self, tree):
-        self.tree = tree
-
-    def node(self): return self.tree.node()
-    def desc(self): 
-        highs = [HighFirst(t) for t in self.tree.desc()]
-        return sorted(highs, reverse=False, key=lambda x: x.node())
-
-def red_tree(f, g, a, tree):
-    return f(tree.node(), red_tree_prime(f, g, a, tree.desc()))
-
-def red_tree_prime(f, g, a, trees):
-    if trees == []: return a
-    return g(red_tree(f, g, a, trees[0]), red_tree_prime(f, g, a, trees[1:]))
 
 gametree = RepTree(moves, Position())
-
-# Testing out reduce tree
-'''
-def add(x, y): return x + y
-sumtree = red_tree(add, add, 0, MapTree(Prune(gametree, 5), static))
-print(sumtree)
-
-position = Position([
-    ["O", "X", "X"],
-    ["O", "O", " "],
-    ["O", " ", " "],
-])
-
-print(static(position))
-'''
 
 # minimax: 3.28
 #evaluation = max(maxi(MapTree(Prune(gametree, 8), static)))
@@ -204,14 +186,6 @@ print(static(position))
 #evaluation = max(maxi(HighFirst(MapTree(Prune(gametree, 8), static))))
 
 # Only the three Best Moves: 3.59
-class TakeTree(Tree):
-    def __init__(self, n, tree):
-        self.tree = tree
-        self.n = n
-
-    def node(self): return self.tree.node()
-    def desc(self): return self.tree.desc()[self.n:]
-
 evaluation = max(maxi(TakeTree(3, HighFirst(MapTree(Prune(gametree, 8), static)))))
 
 print(f"evaluation: {evaluation}")
