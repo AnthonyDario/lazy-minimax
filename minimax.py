@@ -73,19 +73,13 @@ def static(pos):
             if i - j == 0: diag[0] = diag[0] + val
             if i + j == 2: diag[1] = diag[1] + val
 
-        if rows[i] == 3 or rows[i] == -3: 
-            #print(f'returning: rows[i] / 3: {rows[i] / 3}')
-            return rows[i] / 3
+        if rows[i] % 3 == 0: return rows[i] / 3
 
-    for col in cols:
-        if col == 3 or col == -3: 
-            #print(f'returning: col / 3: {col / 3}')
-            return col / 3
+    for col in cols: 
+        if col % 3 == 0: return col / 3
 
     for d in diag:
-        if d == 3 or d == -3: 
-            #print(f'returning: d / 3: {d / 3}')
-            return d / 3
+        if d % 3 == 0: return d / 3
 
     return 0
 
