@@ -6,7 +6,8 @@ Functional Programming Matters" and uses the streams and numerical methods
 implementation from Paul Downen's "Numerical Methods with Functional
 Programming".
 
-This branch uses streams to implement the list of descendents of a node in the
-tree. This allows the descendents to be evaluated lazily but ends up costing in
-runtime, most likely due to the overhead of the specific way the lazy
-evaluation is implemented here.
+This branch uses python lists when returning the descendents of a node. This
+is fairly reasonable for the tic-tac-toe case since the there are not more than
+9 potential descendents in the tree. However for a game with more branching
+this could get unwieldy. Check out the "streams" branch to see an
+implementation with lazy streams.
