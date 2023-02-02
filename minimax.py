@@ -190,7 +190,7 @@ def minleq(ns, pot):
     else: return minleq(ns[1:], pot)
 
 # ------------------------------------
-# Optimizations
+# Experiments
 # ------------------------------------
 
 gametree = RepTree(Position(), moves)
